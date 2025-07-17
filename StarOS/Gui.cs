@@ -16,6 +16,7 @@ namespace StarOS
         public static Bitmap NotepadRaw;
         public static Bitmap StartRaw;
         public static Bitmap TerminalRaw;
+        public static Bitmap Viewer3DRaw;
 
         private static int dockHeight = 100;
         private static int iconBaseSize = 64;
@@ -23,12 +24,10 @@ namespace StarOS
         private static int iconSpacing = 20;
 
         private static bool showStartWindow = false;
-
-        // Terminal instance
-        public static Terminal Terminal = new Terminal();
-
-        // zmienna do jednorazowego wykrycia kliknięcia
         private static bool mouseLeftPressedLastFrame = false;
+
+        public static Terminal Terminal = new Terminal();
+        public static Viewer3D Viewer3DApp = new Viewer3D();
 
         public static void StartGUI()
         {
@@ -37,6 +36,9 @@ namespace StarOS
             MouseManager.ScreenHeight = (uint)ScreenSizeY;
             MouseManager.X = (uint)ScreenSizeX / 2;
             MouseManager.Y = (uint)ScreenSizeY / 2;
+
+            // Przykład ładowania tapety (upewnij się, że ścieżka i format są poprawne)
+            // Wallpaper = new Bitmap("wallpaper.bmp");
         }
 
         public static void Update()
@@ -54,9 +56,11 @@ namespace StarOS
             }
 
             if (Terminal.IsOpen)
-            {
                 DrawTerminalWindow();
-            }
+
+            if (Viewer3DApp.IsOpen)
+                Viewer3DApp.Draw(MainCanvas);
+
 
             if (Cursor != null)
                 MainCanvas.DrawImageAlpha(Cursor, (int)MouseManager.X, (int)MouseManager.Y);
@@ -73,7 +77,7 @@ namespace StarOS
             Color dockColor = Color.FromArgb(0xFF, 0x20, 0x20, 0x20);
             MainCanvas.DrawFilledRectangle(dockColor, 0, dockY, ScreenSizeX, dockHeight);
 
-            Bitmap[] icons = { StartRaw, SettingsRaw, NotepadRaw, TerminalRaw };
+            Bitmap[] icons = { StartRaw, SettingsRaw, NotepadRaw, TerminalRaw, Viewer3DRaw };
             int iconCount = icons.Length;
 
             int totalWidthBase = iconBaseSize * iconCount + iconSpacing * (iconCount - 1);
@@ -133,7 +137,6 @@ namespace StarOS
         {
             bool isLeftPressed = MouseManager.MouseState == MouseState.Left;
 
-            // wykrywamy tylko jedno kliknięcie (przejście z nie wciśnięte do wciśnięte)
             if (isLeftPressed && !mouseLeftPressedLastFrame)
             {
                 mouseLeftPressedLastFrame = true;
@@ -142,9 +145,9 @@ namespace StarOS
                 int mouseY = (int)MouseManager.Y;
 
                 int dockY = ScreenSizeY - dockHeight;
-                int iconX = (ScreenSizeX - ((iconBaseSize + iconSpacing) * 4 - iconSpacing)) / 2;
+                int iconX = (ScreenSizeX - ((iconBaseSize + iconSpacing) * 5 - iconSpacing)) / 2;
 
-                for (int i = 0; i < 4; i++)
+                for (int i = 0; i < 5; i++)
                 {
                     int x = iconX + i * (iconBaseSize + iconSpacing);
                     int y = dockY + dockHeight - iconBaseSize - 10;
@@ -154,12 +157,9 @@ namespace StarOS
                     {
                         switch (i)
                         {
-                            case 0:
-                                showStartWindow = !showStartWindow;
-                                break;
-                            case 3:
-                                Terminal.Toggle();
-                                break;
+                            case 0: showStartWindow = !showStartWindow; break;
+                            case 3: Terminal.Toggle(); break;
+                            case 4: Viewer3DApp.Toggle(); break;
                         }
                     }
                 }
@@ -176,7 +176,7 @@ namespace StarOS
             Terminal.HandleInput(key.Key, key.KeyChar);
         }
 
-        private static void DrawRoundedWindow(int x, int y, int width, int height, int radius, Color fill, Color border)
+        public static void DrawRoundedWindow(int x, int y, int width, int height, int radius, Color fill, Color border)
         {
             MainCanvas.DrawFilledRectangle(fill, x + radius, y, width - 2 * radius, height);
             MainCanvas.DrawFilledRectangle(fill, x, y + radius, width, height - 2 * radius);

@@ -23,6 +23,9 @@ namespace StarOS.Resources
         [ManifestResourceStream(ResourceName = "StarOS.Resources.Icons.terminal.bmp")]
         public static byte[] TerminalRaw;
 
+        [ManifestResourceStream(ResourceName = "StarOS.Resources.Icons.3dviever.bmp")]
+        public static byte[] Viewer3DRaw;
+
 
 
     }

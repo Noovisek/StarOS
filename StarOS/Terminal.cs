@@ -14,24 +14,24 @@ namespace StarOS
         public List<string> Lines { get; private set; } = new List<string>();
         public string CurrentInput { get; private set; } = "";
 
-        public bool IsRunning => isOpen;
-
-        // Terminal position and size - zgodne z Gui
         private readonly int x = 100;
         private readonly int y = 100;
         private readonly int width = 800;
         private readonly int height = 500;
 
-        private SVGAIICanvas canvas;
+        private readonly string[] asciiStarOS = new string[]
+        {
+    @"   _____ __             ____  _____",
+    @"  / ___// /_____ ______/ __ \/ ___/",
+    @"  \__ \/ __/ __ `/ ___/ / / /\__ \ ",
+    @" ___/ / /_/ /_/ / /  / /_/ /___/ / ",
+    @"/____/\__/\__,_/_/   \____/A/____/  ",
+    @"                                    "
+        };
 
         public Terminal()
         {
             // Domyślnie pusta lista, pusty input
-        }
-
-        public void InitCanvas(SVGAIICanvas canvas)
-        {
-            this.canvas = canvas;
         }
 
         public void Toggle()
@@ -42,14 +42,15 @@ namespace StarOS
             {
                 Lines.Clear();
                 CurrentInput = "";
+                AddAsciiArt();
+                Lines.Add("Type 'help' to see available commands.");
             }
         }
 
-        public void Reset()
+        private void AddAsciiArt()
         {
-            isOpen = false;
-            Lines.Clear();
-            CurrentInput = "";
+            Lines.AddRange(asciiStarOS);
+            Lines.Add(""); // Pusta linia po ASCII
         }
 
         public void HandleInput(ConsoleKeyEx key, char keyChar)
@@ -60,13 +61,10 @@ namespace StarOS
             if (key == ConsoleKeyEx.Enter)
             {
                 Lines.Add("user@staros:$ " + CurrentInput);
-
-                // Tutaj możesz dodać obsługę prostych komend
                 if (!string.IsNullOrWhiteSpace(CurrentInput))
                 {
-                    Lines.Add("Executed: " + CurrentInput);
+                    ProcessCommand(CurrentInput.Trim().ToLower());
                 }
-
                 CurrentInput = "";
             }
             else if (key == ConsoleKeyEx.Backspace)
@@ -80,14 +78,61 @@ namespace StarOS
             }
         }
 
-        public void Run()
+        private void ProcessCommand(string command)
         {
-            if (!isOpen || canvas == null)
+            switch (command)
+            {
+                case "help":
+                    Lines.Add("Available commands:");
+                    Lines.Add("help   - Show this help message");
+                    Lines.Add("clear  - Clear the terminal screen");
+                    Lines.Add("date   - Show current date and time");
+                    Lines.Add("echo   - Repeat what you type (usage: echo your_text)");
+                    break;
+
+                case "clear":
+                    Lines.Clear();
+                    AddAsciiArt();
+                    break;
+
+                case "date":
+                    Lines.Add("Current date and time: " + System.DateTime.Now.ToString());
+                    break;
+
+                default:
+                    if (command.StartsWith("echo "))
+                    {
+                        Lines.Add(command.Substring(5)); // echo zwraca tekst po 'echo '
+                    }
+                    else
+                    {
+                        Lines.Add("Unknown command: " + command);
+                    }
+                    break;
+            }
+        }
+
+        public void Draw(SVGAIICanvas canvas)
+        {
+            if (!isOpen)
                 return;
 
-            // Rysowanie okna terminala, tła itd. (Gui robi to za Ciebie, więc tu możesz pominąć albo rozbudować)
+            Color fill = Color.Black;
+            Color border = Color.Gray;
+            int radius = 10;
 
-            // Możesz tu ewentualnie dodać odświeżanie terminala, obsługę klawiatury, jeśli nie chcesz, by Gui to robiło
+            Gui.DrawRoundedWindow(x, y, width, height, radius, fill, border);
+
+            int lineY = y + 20;
+            Color textColor = Color.LightGreen;
+
+            foreach (var line in Lines)
+            {
+                canvas.DrawString(line, PCScreenFont.Default, textColor, x + 10, lineY);
+                lineY += 18;
+            }
+
+            canvas.DrawString("user@staros:$ " + CurrentInput, PCScreenFont.Default, textColor, x + 10, lineY);
         }
     }
 }

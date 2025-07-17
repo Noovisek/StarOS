@@ -23,6 +23,7 @@
 
     <ItemGroup>
       <None Remove="Resources\Cursors\cursor.bmp" />
+      <None Remove="Resources\Icons\3dviever.bmp" />
       <None Remove="Resources\Icons\notepad.bmp" />
       <None Remove="Resources\Icons\settings.bmp" />
       <None Remove="Resources\Icons\startlogo.bmp" />
@@ -33,6 +34,7 @@
 
     <ItemGroup>
       <EmbeddedResource Include="Resources\Cursors\cursor.bmp" />
+      <EmbeddedResource Include="Resources\Icons\3dviever.bmp" />
       <EmbeddedResource Include="Resources\Icons\notepad.bmp" />
       <EmbeddedResource Include="Resources\Icons\settings.bmp" />
       <EmbeddedResource Include="Resources\Icons\terminal.bmp" />
@@ -41,9 +43,15 @@
 
     <ItemGroup>
         <PackageReference Include="Cosmos.Build" Version="0-*" NoWarn="NU1604" />
+        <PackageReference Include="Cosmos.Common" Version="0.1.0-localbuild20250628105152" />
+        <PackageReference Include="Cosmos.Core" Version="0.1.0-localbuild20250628105152" />
         <PackageReference Include="Cosmos.Debug.Kernel" Version="0-*" NoWarn="NU1604" />
+        <PackageReference Include="Cosmos.HAL2" Version="0.1.0-localbuild20250628105152" />
         <PackageReference Include="Cosmos.System2" Version="0-*" NoWarn="NU1604" />
         <PackageReference Include="Cosmos.Plugs" Version="0-*" NoWarn="NU1604" />
+        <PackageReference Include="CosmosHttp" Version="1.0.4" />
+        <PackageReference Include="IL2CPU.API" Version="0.1.0-localbuild20250628105152" />
+        <PackageReference Include="Zlib.Portable" Version="1.11.0" />
     </ItemGroup>
 
     <ItemGroup>
@@ -53,6 +61,8 @@
     </ItemGroup>
 
     <ItemGroup>
+      <Folder Include="Internet\" />
+      <Folder Include="Games\" />
       <Folder Include="Nowy folder\" />
     </ItemGroup>
 

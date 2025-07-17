@@ -15,6 +15,7 @@ namespace StarOS
             Gui.NotepadRaw = new Bitmap(Files.NotepadRaw);
             Gui.StartRaw = new Bitmap(Files.StartRaw);
             Gui.TerminalRaw = new Bitmap(Files.TerminalRaw);
+            Gui.Viewer3DRaw = new Bitmap(Files.Viewer3DRaw);
 
             Gui.StartGUI();
         }
