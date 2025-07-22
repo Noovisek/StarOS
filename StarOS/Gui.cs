@@ -1,4 +1,5 @@
-﻿using Cosmos.System;
+﻿// Gui.cs (z dodanymi funkcjami: przesuwanie okienek + przyciski kontrolne)
+using Cosmos.System;
 using Cosmos.System.Graphics;
 using Cosmos.System.Graphics.Fonts;
 using System;
@@ -26,6 +27,11 @@ namespace StarOS
         private static bool showStartWindow = false;
         private static bool mouseLeftPressedLastFrame = false;
 
+        private static bool isDraggingWindow = false;
+        private static int dragOffsetX = 0, dragOffsetY = 0;
+
+        private static Rectangle terminalWindow = new Rectangle(100, 100, 800, 500);
+
         public static Terminal Terminal = new Terminal();
         public static Viewer3D Viewer3DApp = new Viewer3D();
 
@@ -36,9 +42,6 @@ namespace StarOS
             MouseManager.ScreenHeight = (uint)ScreenSizeY;
             MouseManager.X = (uint)ScreenSizeX / 2;
             MouseManager.Y = (uint)ScreenSizeY / 2;
-
-            // Przykład ładowania tapety (upewnij się, że ścieżka i format są poprawne)
-            // Wallpaper = new Bitmap("wallpaper.bmp");
         }
 
         public static void Update()
@@ -55,12 +58,14 @@ namespace StarOS
                     Color.FromArgb(0xFF, 0x40, 0x40, 0x40));
             }
 
+            if (Settings.IsOpen)
+                Settings.Draw(MainCanvas);
+
             if (Terminal.IsOpen)
                 DrawTerminalWindow();
 
             if (Viewer3DApp.IsOpen)
                 Viewer3DApp.Draw(MainCanvas);
-
 
             if (Cursor != null)
                 MainCanvas.DrawImageAlpha(Cursor, (int)MouseManager.X, (int)MouseManager.Y);
@@ -84,7 +89,7 @@ namespace StarOS
             int startX = (ScreenSizeX - totalWidthBase) / 2;
 
             int mouseX = (int)MouseManager.X;
-            int mouseY = (int)MouseManager.Y;
+            int mouseY = (int)MouseManager.Y;   
             int effectRadius = 150;
 
             for (int i = 0; i < iconCount; i++)
@@ -116,33 +121,34 @@ namespace StarOS
 
         private static void DrawTerminalWindow()
         {
-            int x = 100, y = 100, width = 800, height = 500;
-            Color fill = Color.Black;
-            Color border = Color.Gray;
-            DrawRoundedWindow(x, y, width, height, 10, fill, border);
+            DrawRoundedWindow(terminalWindow.X, terminalWindow.Y, terminalWindow.Width, terminalWindow.Height, 10, Color.Black, Color.Gray);
 
-            int lineY = y + 20;
+            // Kontrolki okna
+            MainCanvas.DrawFilledCircle(Color.Red, terminalWindow.X + 10, terminalWindow.Y + 10, 6);
+            MainCanvas.DrawFilledCircle(Color.Yellow, terminalWindow.X + 30, terminalWindow.Y + 10, 6);
+            MainCanvas.DrawFilledCircle(Color.Green, terminalWindow.X + 50, terminalWindow.Y + 10, 6);
+
+            int lineY = terminalWindow.Y + 30;
             Color textColor = Color.LightGreen;
 
             foreach (var line in Terminal.Lines)
             {
-                MainCanvas.DrawString(line, PCScreenFont.Default, textColor, x + 10, lineY);
+                MainCanvas.DrawString(line, PCScreenFont.Default, textColor, terminalWindow.X + 10, lineY);
                 lineY += 18;
             }
 
-            MainCanvas.DrawString("user@staros:$ " + Terminal.CurrentInput, PCScreenFont.Default, textColor, x + 10, lineY);
+            MainCanvas.DrawString("user@staros:$ " + Terminal.CurrentInput, PCScreenFont.Default, textColor, terminalWindow.X + 10, lineY);
         }
 
         private static void HandleClick()
         {
             bool isLeftPressed = MouseManager.MouseState == MouseState.Left;
+            int mouseX = (int)MouseManager.X;
+            int mouseY = (int)MouseManager.Y;
 
             if (isLeftPressed && !mouseLeftPressedLastFrame)
             {
                 mouseLeftPressedLastFrame = true;
-
-                int mouseX = (int)MouseManager.X;
-                int mouseY = (int)MouseManager.Y;
 
                 int dockY = ScreenSizeY - dockHeight;
                 int iconX = (ScreenSizeX - ((iconBaseSize + iconSpacing) * 5 - iconSpacing)) / 2;
@@ -158,15 +164,35 @@ namespace StarOS
                         switch (i)
                         {
                             case 0: showStartWindow = !showStartWindow; break;
+                            case 1: Settings.Toggle(); break;
                             case 3: Terminal.Toggle(); break;
                             case 4: Viewer3DApp.Toggle(); break;
                         }
                     }
                 }
+
+                if (Terminal.IsOpen && new Rectangle(terminalWindow.X, terminalWindow.Y, terminalWindow.Width, 20).Contains(mouseX, mouseY))
+                {
+                    isDraggingWindow = true;
+                    dragOffsetX = mouseX - terminalWindow.X;
+                    dragOffsetY = mouseY - terminalWindow.Y;
+                }
+
+                if (new Rectangle(terminalWindow.X + 10, terminalWindow.Y + 10, 12, 12).Contains(mouseX, mouseY))
+                {
+                    Terminal.Toggle();
+                }
             }
             else if (!isLeftPressed)
             {
                 mouseLeftPressedLastFrame = false;
+                isDraggingWindow = false;
+            }
+
+            if (isDraggingWindow)
+            {
+                terminalWindow.X = mouseX - dragOffsetX;
+                terminalWindow.Y = mouseY - dragOffsetY;
             }
         }
 

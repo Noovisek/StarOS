@@ -1,10 +1,14 @@
 ﻿using System;
+using System.IO;
 using Cosmos.Core.Memory;
 using Cosmos.System;
+using Cosmos.System.FileSystem;
+using Cosmos.System.FileSystem.VFS;
 using Cosmos.System.Graphics;
 using System.Drawing;
 using StarOS.Resources;
 using Sys = Cosmos.System;
+using TextConsole = Cosmos.System.Console;
 
 namespace StarOS
 {
@@ -24,10 +28,21 @@ namespace StarOS
 
         protected override void BeforeRun()
         {
+            // Montowanie systemu plików CosmosVFS (obsługuje FAT i inne)
+            try
+            {
+                var vfs = new CosmosVFS();
+                VFSManager.RegisterVFS(vfs);
+                // Nie wywołuj Mount(), CosmosVFS robi to automatycznie
+            }
+            catch (Exception e)
+            {
+                System.Console.WriteLine("Błąd montowania systemu plików: " + e.Message);
+            }
+
             canvas = FullScreenCanvas.GetFullScreenCanvas();
             cursor = new Bitmap(Files.StarOSCursorRaw);
 
-            // Ustawienia myszy (ważne, by mysz działała poprawnie)
             MouseManager.ScreenWidth = canvas.Mode.Width;
             MouseManager.ScreenHeight = canvas.Mode.Height;
             MouseManager.X = canvas.Mode.Width / 2;
@@ -36,15 +51,23 @@ namespace StarOS
             mouseX = (int)MouseManager.X;
             mouseY = (int)MouseManager.Y;
 
-            buttons = new Button[]
-            {
-                new Button("bBoot Version", 100, 100),
-                new Button("Start GUI", 100, 160),
-                new Button("Shutdown", 100, 340)
-            };
+            bool isInstalled = File.Exists(@"0:\installed2.flag");
+
+            var list = new System.Collections.Generic.List<Button>
+    {
+        new Button("bBoot Version", 100, 100),
+        new Button("Start GUI", 100, 160),
+        new Button("Shutdown", 100, 220)
+    };
+
+            if (!isInstalled)
+                list.Insert(1, new Button("Install OS", 100, 130));
+
+            buttons = list.ToArray();
 
             ShowBootloaderCanvas();
         }
+
 
         private void ShowBootloaderCanvas()
         {
@@ -53,18 +76,14 @@ namespace StarOS
 
             while (!selected)
             {
-                // Pozycja myszy jest automatycznie aktualizowana przez Cosmos
-
                 mouseX = (int)MouseManager.X;
                 mouseY = (int)MouseManager.Y;
 
-                // Ogranicz pozycję kursora do ekranu
                 if (mouseX < 0) mouseX = 0;
                 if (mouseY < 0) mouseY = 0;
                 if (mouseX > (int)canvas.Mode.Width - 1) mouseX = (int)canvas.Mode.Width - 1;
                 if (mouseY > (int)canvas.Mode.Height - 1) mouseY = (int)canvas.Mode.Height - 1;
 
-                // Rysuj tło i przyciski
                 canvas.DrawImage(wallpaper, 0, 0);
 
                 foreach (var button in buttons)
@@ -74,15 +93,29 @@ namespace StarOS
                     {
                         switch (button.Text)
                         {
-                            case "bBoot Version":
-                                DrawMessage("bBoot Version 1.3.3 ");
+                            case "Install OS":
+                                // Wyłącz canvas i wróć do trybu tekstowego
+                                canvas.Disable();
+                                canvas = null;
+
+                                // "Wyczyszczenie" ekranu konsoli
+                                for (int i = 0; i < 30; i++) System.Console.WriteLine();
+
+                                StarOS.Installer.Installer.Start(); // uruchom konsolowy instalator
+                                Sys.Power.Reboot(); // restart systemu
                                 break;
+
+                            case "bBoot Version":
+                                DrawMessage("bBoot Version 1.3.3");
+                                break;
+
                             case "Start GUI":
-                                Boot.OnBoot();
+                                Boot.OnBoot(); // <-- Twoje GUI, jeśli masz
                                 isBooted = true;
                                 RunGUI = true;
                                 selected = true;
                                 break;
+
                             case "Shutdown":
                                 Sys.Power.Shutdown();
                                 break;
@@ -90,17 +123,10 @@ namespace StarOS
                     }
                 }
 
-                // Rysuj kursor myszy
                 canvas.DrawImageAlpha(cursor, mouseX, mouseY);
-
-                // Wyświetl wszystko
                 canvas.Display();
 
-                // Odczyt klawiatury - czyść bufor aby nie zawiesić systemu
-                while (KeyboardManager.TryReadKey(out var key))
-                {
-                    // Nic nie rób, po prostu czytaj żeby odświeżyć stan
-                }
+                while (KeyboardManager.TryReadKey(out var key)) { }
             }
         }
 
@@ -117,13 +143,12 @@ namespace StarOS
 
             if (!RunGUI)
             {
-                // Usunięto obsługę terminala
                 isBooted = false;
                 ShowBootloaderCanvas();
             }
             else
             {
-                Gui.Update();
+                Gui.Update(); // <-- Dodaj swoją obsługę GUI, jeśli chcesz
             }
 
             if (lastHeapCollect >= 20)
@@ -152,7 +177,6 @@ namespace StarOS
             public void Draw(Canvas canvas, int mouseX, int mouseY)
             {
                 var bg = IsHovered(mouseX, mouseY) ? Color.Gray : Color.DarkSlateGray;
-
                 canvas.DrawFilledRectangle(bg, X, Y, Width, Height);
                 canvas.DrawRectangle(Color.White, X, Y, Width, Height);
                 canvas.DrawString(Text, Sys.Graphics.Fonts.PCScreenFont.Default, Color.White, X + 10, Y + 12);
