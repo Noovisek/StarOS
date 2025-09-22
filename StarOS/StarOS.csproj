@@ -19,6 +19,7 @@
         <PxeInterface>192.168.0.8</PxeInterface>
         <DebugEnabled>False</DebugEnabled>
         <VMWareEdition>Player</VMWareEdition>
+        <BinFormat>Elf</BinFormat>
     </PropertyGroup>
 
     <ItemGroup>
@@ -61,8 +62,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Folder Include="Internet\" />
-      <Folder Include="Games\" />
+      <Folder Include="Nowy folder1\" />
       <Folder Include="Nowy folder\" />
     </ItemGroup>
 

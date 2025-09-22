@@ -7,20 +7,78 @@ namespace StarOS
     public class Viewer3D
     {
         public bool IsOpen = false;
-        private float angleY = 0f;
+        private bool IsMaximized = false;
+        private bool IsMinimized = false;
+        private bool IsClosed = false;
+        private int winX = 560, winY = 240, winW = 800, winH = 600;
+        private float angleY = 0f, angleX = 0f;
+        private Color shapeColor = Color.FromArgb(95, 158, 160);
+        private Color backgroundColor = Color.FromArgb(0, 0, 0);
+        private int frameCount = 0;
+        private DateTime lastFrameTime = DateTime.Now;
 
         public void Toggle()
         {
             IsOpen = !IsOpen;
         }
 
+        public void Minimize()
+        {
+            IsMinimized = true;
+        }
+
+        public void Maximize()
+        {
+            IsMaximized = true;
+            winX = 0;
+            winY = 0;
+            winW = 1920; // Full screen width for example
+            winH = 1080; // Full screen height for example
+        }
+
+        public void Restore()
+        {
+            IsMaximized = false;
+            IsMinimized = false;
+            winX = 560;
+            winY = 240;
+            winW = 800;
+            winH = 600;
+        }
+
+        public void Close()
+        {
+            IsClosed = true;
+            IsOpen = false;
+        }
+
+        public void ChangeShapeColor(Color color)
+        {
+            shapeColor = color;
+        }
+
+        public void ChangeBackgroundColor(Color color)
+        {
+            backgroundColor = color;
+        }
+
         public void Draw(SVGAIICanvas canvas)
         {
             if (!IsOpen) return;
 
-            int winX = 560, winY = 240;
-            int winW = 800, winH = 600;
-            canvas.DrawFilledRectangle(Color.FromArgb(0, 0, 0), winX, winY, winW, winH);
+            if (IsMinimized || IsClosed)
+            {
+                return; // Do nothing if minimized or closed
+            }
+
+            // Clear the window with background color
+            canvas.DrawFilledRectangle(backgroundColor, winX, winY, winW, winH);
+
+            // Draw FPS
+            DrawFPS(canvas);
+
+            // Draw window buttons (close, minimize, maximize)
+            DrawWindowButtons(canvas);
 
             int cx = winX + winW / 2;
             int cy = winY + winH / 2;
@@ -30,17 +88,25 @@ namespace StarOS
 
             Vector3[] verts = new Vector3[]
             {
-                new Vector3(0, size, 0),
+                new Vector3(-size, -size, -size),
+                new Vector3(size, -size, -size),
+                new Vector3(size, size, -size),
+                new Vector3(-size, size, -size),
                 new Vector3(-size, -size, size),
-                new Vector3(size, -size, size)
+                new Vector3(size, -size, size),
+                new Vector3(size, size, size),
+                new Vector3(-size, size, size)
             };
 
             Matrix3 rotY = Matrix3.RotationY(angleY);
+            Matrix3 rotX = Matrix3.RotationX(angleX);
 
-            Point[] screen = new Point[3];
-            for (int i = 0; i < 3; i++)
+            Point[] screen = new Point[8];
+            for (int i = 0; i < 8; i++)
             {
                 Vector3 rotated = rotY * verts[i];
+                rotated = rotX * rotated;
+
                 float z = rotated.Z + fov;
                 if (z == 0) z = 0.01f;
                 float scale = fov / z;
@@ -50,13 +116,80 @@ namespace StarOS
                 screen[i] = new Point(x, y);
             }
 
-            DrawFilledTriangle(canvas, screen[0], screen[1], screen[2], Color.FromArgb(95, 158, 160));
+            // Draw cube edges
+            DrawLine(canvas, screen[0], screen[1]);
+            DrawLine(canvas, screen[1], screen[2]);
+            DrawLine(canvas, screen[2], screen[3]);
+            DrawLine(canvas, screen[3], screen[0]);
+
+            DrawLine(canvas, screen[4], screen[5]);
+            DrawLine(canvas, screen[5], screen[6]);
+            DrawLine(canvas, screen[6], screen[7]);
+            DrawLine(canvas, screen[7], screen[4]);
+
+            DrawLine(canvas, screen[0], screen[4]);
+            DrawLine(canvas, screen[1], screen[5]);
+            DrawLine(canvas, screen[2], screen[6]);
+            DrawLine(canvas, screen[3], screen[7]);
 
             angleY += 0.03f;
+            angleX += 0.02f;
+
+            frameCount++;
         }
 
-        // ----------------- Struktury pomocnicze ------------------
+        // FPS Display
+        private void DrawFPS(SVGAIICanvas canvas)
+        {
+            if ((DateTime.Now - lastFrameTime).TotalSeconds >= 1)
+            {
+                float fps = frameCount;
+                frameCount = 0;
+                lastFrameTime = DateTime.Now;
 
+                string fpsText = $"FPS: {fps}";
+                DrawText(canvas, 10, 10, fpsText, Color.White); // Draw FPS text manually
+            }
+        }
+
+        // Manual text drawing (a basic example for letters, not scalable)
+        private void DrawText(SVGAIICanvas canvas, int x, int y, string text, Color color)
+        {
+            foreach (char c in text)
+            {
+                // Simple example for letter 'F'
+                if (c == 'F')
+                {
+                    canvas.DrawPoint(color, x, y);
+                    canvas.DrawPoint(color, x + 1, y);
+                    canvas.DrawPoint(color, x + 2, y);
+                    canvas.DrawPoint(color, x, y + 1);
+                    canvas.DrawPoint(color, x, y + 2);
+                    x += 4;
+                }
+                // Handle more characters...
+            }
+        }
+
+        // Draw window control buttons (Close, Minimize, Maximize)
+        private void DrawWindowButtons(SVGAIICanvas canvas)
+        {
+            int buttonSize = 20;
+
+            // Close button (red)
+            DrawButton(canvas, winX + winW - buttonSize * 3, winY, buttonSize, Color.Red);
+            // Minimize button (yellow)
+            DrawButton(canvas, winX + winW - buttonSize * 2, winY, buttonSize, Color.Yellow);
+            // Maximize button (green)
+            DrawButton(canvas, winX + winW - buttonSize, winY, buttonSize, Color.Green);
+        }
+
+        private void DrawButton(SVGAIICanvas canvas, int x, int y, int size, Color color)
+        {
+            canvas.DrawFilledRectangle(color, x, y, size, size);
+        }
+
+        // Helper Structures
         private struct Vector3
         {
             public float X, Y, Z;
@@ -87,6 +220,24 @@ namespace StarOS
                 };
             }
 
+            public static Matrix3 RotationX(float angle)
+            {
+                float c = (float)Math.Cos(angle);
+                float s = (float)Math.Sin(angle);
+                return new Matrix3
+                {
+                    M11 = 1,
+                    M12 = 0,
+                    M13 = 0,
+                    M21 = 0,
+                    M22 = c,
+                    M23 = -s,
+                    M31 = 0,
+                    M32 = s,
+                    M33 = c
+                };
+            }
+
             public static Vector3 operator *(Matrix3 m, Vector3 v)
             {
                 float x = m.M11 * v.X + m.M12 * v.Y + m.M13 * v.Z;
@@ -102,41 +253,31 @@ namespace StarOS
             public Point(int x, int y) { X = x; Y = y; }
         }
 
-        // ----------------- Rysowanie trójkąta ------------------
-
-        private void DrawFilledTriangle(SVGAIICanvas canvas, Point p1, Point p2, Point p3, Color color)
+        // Drawing line using Bresenham's algorithm
+        private void DrawLine(SVGAIICanvas canvas, Point p1, Point p2)
         {
-            if (p2.Y < p1.Y) (p1, p2) = (p2, p1);
-            if (p3.Y < p1.Y) (p1, p3) = (p3, p1);
-            if (p3.Y < p2.Y) (p2, p3) = (p3, p2);
+            int dx = Math.Abs(p2.X - p1.X);
+            int dy = Math.Abs(p2.Y - p1.Y);
+            int sx = p1.X < p2.X ? 1 : -1;
+            int sy = p1.Y < p2.Y ? 1 : -1;
+            int err = dx - dy;
 
-            void DrawScanline(int y, int x1, int x2)
+            while (true)
             {
-                if (x1 > x2) (x1, x2) = (x2, x1);
-                for (int x = x1; x <= x2; x++)
-                    canvas.DrawPoint(color, x, y);
-            }
-
-            int Interpolate(int y0, int x0, int y1, int x1, int y)
-            {
-                if (y1 == y0) return x0;
-                return x0 + (x1 - x0) * (y - y0) / (y1 - y0);
-            }
-
-            for (int y = p1.Y; y <= p2.Y; y++)
-            {
-                int xa = Interpolate(p1.Y, p1.X, p2.Y, p2.X, y);
-                int xb = Interpolate(p1.Y, p1.X, p3.Y, p3.X, y);
-                DrawScanline(y, xa, xb);
-            }
-
-            for (int y = p2.Y; y <= p3.Y; y++)
-            {
-                int xa = Interpolate(p2.Y, p2.X, p3.Y, p3.X, y);
-                int xb = Interpolate(p1.Y, p1.X, p3.Y, p3.X, y);
-                DrawScanline(y, xa, xb);
+                canvas.DrawPoint(shapeColor, p1.X, p1.Y);
+                if (p1.X == p2.X && p1.Y == p2.Y) break;
+                int e2 = err * 2;
+                if (e2 > -dy)
+                {
+                    err -= dy;
+                    p1.X += sx;
+                }
+                if (e2 < dx)
+                {
+                    err += dx;
+                    p1.Y += sy;
+                }
             }
         }
     }
 }
-    

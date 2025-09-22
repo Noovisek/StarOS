@@ -19,7 +19,6 @@ namespace StarOS
         private int lastHeapCollect = 0;
 
         private Canvas canvas;
-
         private Bitmap cursor;
         private int mouseX;
         private int mouseY;
@@ -28,12 +27,11 @@ namespace StarOS
 
         protected override void BeforeRun()
         {
-            // Montowanie systemu plików CosmosVFS (obsługuje FAT i inne)
+            // Montowanie systemu plików CosmosVFS
             try
             {
                 var vfs = new CosmosVFS();
                 VFSManager.RegisterVFS(vfs);
-                // Nie wywołuj Mount(), CosmosVFS robi to automatycznie
             }
             catch (Exception e)
             {
@@ -54,11 +52,11 @@ namespace StarOS
             bool isInstalled = File.Exists(@"0:\installed2.flag");
 
             var list = new System.Collections.Generic.List<Button>
-    {
-        new Button("bBoot Version", 100, 100),
-        new Button("Start GUI", 100, 160),
-        new Button("Shutdown", 100, 220)
-    };
+            {
+                new Button("bBoot Version", 100, 100),
+                new Button("Start GUI", 100, 160),
+                new Button("Shutdown", 100, 220)
+            };
 
             if (!isInstalled)
                 list.Insert(1, new Button("Install OS", 100, 130));
@@ -67,7 +65,6 @@ namespace StarOS
 
             ShowBootloaderCanvas();
         }
-
 
         private void ShowBootloaderCanvas()
         {
@@ -94,15 +91,11 @@ namespace StarOS
                         switch (button.Text)
                         {
                             case "Install OS":
-                                // Wyłącz canvas i wróć do trybu tekstowego
                                 canvas.Disable();
                                 canvas = null;
-
-                                // "Wyczyszczenie" ekranu konsoli
                                 for (int i = 0; i < 30; i++) System.Console.WriteLine();
-
-                                StarOS.Installer.Installer.Start(); // uruchom konsolowy instalator
-                                Sys.Power.Reboot(); // restart systemu
+                                StarOS.Installer.Installer.Start();
+                                Sys.Power.Reboot();
                                 break;
 
                             case "bBoot Version":
@@ -110,7 +103,21 @@ namespace StarOS
                                 break;
 
                             case "Start GUI":
-                                Boot.OnBoot(); // <-- Twoje GUI, jeśli masz
+                                canvas.Disable();
+                                canvas = null;
+                                for (int i = 0; i < 30; i++) System.Console.WriteLine();
+
+                                // --- tutaj logowanie GUI ---
+                                canvas = FullScreenCanvas.GetFullScreenCanvas(); // ponownie aktywuj canvas dla logowania
+                                LoginWindow login = new LoginWindow(canvas, new Bitmap(Files.StarOSCursorRaw));
+
+                                while (!login.Authenticated)
+                                {
+                                    login.Update();
+                                }
+
+                                // po udanym loginie
+                                Boot.OnBoot();
                                 isBooted = true;
                                 RunGUI = true;
                                 selected = true;
@@ -148,7 +155,7 @@ namespace StarOS
             }
             else
             {
-                Gui.Update(); // <-- Dodaj swoją obsługę GUI, jeśli chcesz
+                Gui.Update();
             }
 
             if (lastHeapCollect >= 20)

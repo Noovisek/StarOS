@@ -1,9 +1,11 @@
-﻿// Gui.cs (z dodanymi funkcjami: przesuwanie okienek + przyciski kontrolne)
-using Cosmos.System;
+﻿using Cosmos.System;
 using Cosmos.System.Graphics;
 using Cosmos.System.Graphics.Fonts;
 using System;
 using System.Drawing;
+using System.IO;
+using Sys = Cosmos.System;
+
 
 namespace StarOS
 {
@@ -34,6 +36,11 @@ namespace StarOS
 
         public static Terminal Terminal = new Terminal();
         public static Viewer3D Viewer3DApp = new Viewer3D();
+        public static Notepad NotepadApp = new Notepad();
+
+        // Start Window
+        private static Rectangle startWindowRect;
+        private static string currentUsername = "User";
 
         public static void StartGUI()
         {
@@ -42,6 +49,26 @@ namespace StarOS
             MouseManager.ScreenHeight = (uint)ScreenSizeY;
             MouseManager.X = (uint)ScreenSizeX / 2;
             MouseManager.Y = (uint)ScreenSizeY / 2;
+
+            // Odczytaj username z installed2.flag
+            if (File.Exists(@"0:\installed2.flag"))
+            {
+                var lines = File.ReadAllLines(@"0:\installed2.flag");
+                foreach (var line in lines)
+                {
+                    if (line.StartsWith("User:"))
+                    {
+                        currentUsername = line.Substring(5).Trim();
+                        break;
+                    }
+                }
+            }
+
+            // Okno Start wyśrodkowane nad dockiem
+            int winW = 300, winH = 200;
+            int winX = (ScreenSizeX - winW) / 2;
+            int winY = ScreenSizeY - dockHeight - winH - 10;
+            startWindowRect = new Rectangle(winX, winY, winW, winH);
         }
 
         public static void Update()
@@ -53,9 +80,7 @@ namespace StarOS
 
             if (showStartWindow)
             {
-                DrawRoundedWindow(50, 200, 400, 300, 20,
-                    Color.FromArgb(0xFF, 0xD3, 0xD3, 0xD3),
-                    Color.FromArgb(0xFF, 0x40, 0x40, 0x40));
+                DrawStartWindow();
             }
 
             if (Settings.IsOpen)
@@ -66,6 +91,9 @@ namespace StarOS
 
             if (Viewer3DApp.IsOpen)
                 Viewer3DApp.Draw(MainCanvas);
+
+            if (NotepadApp.IsOpen)
+                NotepadApp.Draw(MainCanvas);
 
             if (Cursor != null)
                 MainCanvas.DrawImageAlpha(Cursor, (int)MouseManager.X, (int)MouseManager.Y);
@@ -89,7 +117,7 @@ namespace StarOS
             int startX = (ScreenSizeX - totalWidthBase) / 2;
 
             int mouseX = (int)MouseManager.X;
-            int mouseY = (int)MouseManager.Y;   
+            int mouseY = (int)MouseManager.Y;
             int effectRadius = 150;
 
             for (int i = 0; i < iconCount; i++)
@@ -119,11 +147,38 @@ namespace StarOS
             }
         }
 
+        private static void DrawStartWindow()
+        {
+            DrawRoundedWindow(startWindowRect.X, startWindowRect.Y, startWindowRect.Width, startWindowRect.Height, 10, Color.LightGray, Color.Black);
+
+            // Username
+            MainCanvas.DrawString("User: " + currentUsername, PCScreenFont.Default, Color.Black, startWindowRect.X + 20, startWindowRect.Y + 20);
+
+            // Clock
+            string timeStr = DateTime.Now.ToString("HH:mm:ss");
+            MainCanvas.DrawString("Time: " + timeStr, PCScreenFont.Default, Color.Black, startWindowRect.X + 20, startWindowRect.Y + 50);
+
+            // Power Off button
+            Rectangle powerButton = new Rectangle(startWindowRect.X + 20, startWindowRect.Y + 100, 100, 30);
+            MainCanvas.DrawFilledRectangle(Color.Gray, powerButton.X, powerButton.Y, powerButton.Width, powerButton.Height);
+            MainCanvas.DrawRectangle(Color.Black, powerButton.X, powerButton.Y, powerButton.Width, powerButton.Height);
+            MainCanvas.DrawString("Power Off", PCScreenFont.Default, Color.Black, powerButton.X + 10, powerButton.Y + 8);
+
+            // Obsługa kliknięcia Power Off
+            int mx = (int)MouseManager.X;
+            int my = (int)MouseManager.Y;
+            bool isLeftPressed = MouseManager.MouseState == MouseState.Left;
+
+            if (isLeftPressed && !mouseLeftPressedLastFrame && powerButton.Contains(mx, my))
+            {
+                Sys.Power.Shutdown();
+            }
+        }
+
         private static void DrawTerminalWindow()
         {
             DrawRoundedWindow(terminalWindow.X, terminalWindow.Y, terminalWindow.Width, terminalWindow.Height, 10, Color.Black, Color.Gray);
 
-            // Kontrolki okna
             MainCanvas.DrawFilledCircle(Color.Red, terminalWindow.X + 10, terminalWindow.Y + 10, 6);
             MainCanvas.DrawFilledCircle(Color.Yellow, terminalWindow.X + 30, terminalWindow.Y + 10, 6);
             MainCanvas.DrawFilledCircle(Color.Green, terminalWindow.X + 50, terminalWindow.Y + 10, 6);
@@ -150,10 +205,17 @@ namespace StarOS
             {
                 mouseLeftPressedLastFrame = true;
 
+                // Start icon
                 int dockY = ScreenSizeY - dockHeight;
                 int iconX = (ScreenSizeX - ((iconBaseSize + iconSpacing) * 5 - iconSpacing)) / 2;
 
-                for (int i = 0; i < 5; i++)
+                if (mouseX >= iconX && mouseX <= iconX + iconBaseSize && mouseY >= dockY && mouseY <= dockY + iconBaseSize)
+                {
+                    showStartWindow = !showStartWindow;
+                }
+
+                // Pozostałe ikony
+                for (int i = 1; i < 5; i++)
                 {
                     int x = iconX + i * (iconBaseSize + iconSpacing);
                     int y = dockY + dockHeight - iconBaseSize - 10;
@@ -163,8 +225,8 @@ namespace StarOS
                     {
                         switch (i)
                         {
-                            case 0: showStartWindow = !showStartWindow; break;
                             case 1: Settings.Toggle(); break;
+                            case 2: NotepadApp.Toggle(); break;
                             case 3: Terminal.Toggle(); break;
                             case 4: Viewer3DApp.Toggle(); break;
                         }
@@ -200,6 +262,7 @@ namespace StarOS
         {
             if (!KeyboardManager.TryReadKey(out var key)) return;
             Terminal.HandleInput(key.Key, key.KeyChar);
+            NotepadApp.HandleInput(key.Key, key.KeyChar);
         }
 
         public static void DrawRoundedWindow(int x, int y, int width, int height, int radius, Color fill, Color border)
